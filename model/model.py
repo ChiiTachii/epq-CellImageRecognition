@@ -14,6 +14,9 @@ import re
 import seaborn as sn
 from pathlib import Path
 from datetime import datetime
+from fsplit.filesplit import Filesplit
+from mlxtend.plotting import confusion_matrix as cm
+
 
 #img handling
 import PIL
@@ -28,6 +31,9 @@ testDir = Path('./images/TEST_SIMPLE')
 
 #this is a list of the 4 classes that will be used. they will be formatted into the directory.
 classes = ['EOSINOPHIL', 'LYMPHOCYTE', 'MONOCYTE', 'NEUTROPHIL']
+
+#this is reversed order for the heatmap
+rclasses = ['NEUTROPHIL', 'MONOCYTE', 'LYMPHOCYTE', 'EOSINOPHIL']
 
 #first step for preprocessing - this uses the preprocessing input imported from the ResNet library.
 trainDGen = ImageDataGenerator(
@@ -72,52 +78,76 @@ model.fit(
 #creating a path with the exact datetime
 now = datetime.now()
 savepath = now.strftime("model_%d%m%Y-%H%M")
+os.mkdir("model\saves\{}".format(savepath))
 
-'''
-#THIS IS TOO LARGE TO PUSH TO GITHUB.
+#THIS IS TOO LARGE TO PUSH TO GITHUB. on its own
 #saving the model
 model.save(
-        ("model\saves\{}".format(savepath)),
+        ("model\saves\{}\model".format(savepath)),
         include_optimizer = True,
         save_format='h5'
         )
+
+#splitting the file so that it can be pushed
+fs = Filesplit()
+fs.split(
+        ("model\saves\{}\model".format(savepath)),
+        10000000,
+        ("model\saves\{}".format(savepath))
+        )
+
+#removing the big file
+os.remove(("model\saves\{}\model".format(savepath)))
+
+#merging the file back
+fs.merge(
+        "model\saves\{}".format(savepath),
+        ("model\saves\{}\model".format(savepath)),
+        cleanup = True
+        )
+
 '''
 #save model as json
 modJson = model.to_json()
-with open(("model\saves\{}".format(savepath)), "wt") as f:
-          f.write(modJson)
+
+#creating a path with the exact datetime
+now = datetime.now()
+savepath = now.strftime("model_%d%m%Y-%H%M")
+os.mkdir("model\saves\{}".format(savepath))
+
+with open(("model\saves\{}\config.json".format(savepath)), "wt") as f:
+    f.write(modJson)
+    model.save_weights("model\saves\{}\weights.hd5".format(savepath))
 f.close()
+'''
+
+
 
 #evaluating accuracy. verbose set to 2 for silence and information.
 test_loss, test_acc = model.evaluate(testGen, verbose=2)
 print('\nTest accuracy:', test_acc)
 
 #loading the model at the previous datetime. When Loading, set compile to false due to using a custom optimizer that is not natively recognised.
-model2 = keras.models.load_model("model\saves\model_05072021-2111", compile=False)
+model2 = keras.models.load_model("model\saves\{}\model".format(savepath), compile=False)
 
-'''
-#confusion matrix (currently does not work)
-filenames = testGen.filenames
-nb_samples = len(testGen)
-y_prob=[]
-y_act=[]
-testGen.reset()
-for _ in range(nb_samples):
-  X_test,Y_test = testGen.next()
-  y_prob.append(model.predict(X_test))
-  y_act.append(Y_test)
+#predicting the test set
+predicts = model.predict(testGen)
+yActual = np.asarray(test_labels, dtype=int)
 
-predicted_class = [list(trainGen.class_indices.keys())[i.argmax()] for i in y_prob]
-actual_class = [list(trainGen.class_indices.keys())[i.argmax()] for i in y_act]
+#looping the testGen to obtain labels, then setting it as an array
+test_labels = []
 
+for i in range(0, 71):
+    test_labels.extend(np.array(testGen[i][1]))
 
-out_df = pd.DataFrame(np.vstack([predicted_class,actual_class]).T,columns=['predicted_class','actual_class'])
-confusion_matrix = pd.crosstab(out_df['actual_class'],out_df['predicted_class'], rownames=['Actual'], colnames=['Predicted'])
+np.asarray(test_labels, dtype=int64)
 
-sn.heatmap(confusion_matrix,cmap='Blues', annot=True,fmt='d')
-plt.show()
-print('test accuracy : {}'.format((np.diagonal(confusion_matrix).sum()/confusion_matrix.sum().sum()*100)))
-'''
+#setting up a matrix
+matrix = cm(yActual, yPredicted)
+
+#plotting the heatmap
+sn.heatmap(matrix, cmap='Reds', annot=True, fmt='d', xticklabels = classes, yticklabels = rclasses)
+
 =======
 hello
 >>>>>>> parent of 3e79063 (first training + model complete)
