@@ -1,0 +1,14 @@
+'''
+#save model as json
+modJson = model.to_json()
+
+#creating a path with the exact datetime
+now = datetime.now()
+savepath = now.strftime("model_%d%m%Y-%H%M")
+os.mkdir("model\saves\{}".format(savepath))
+
+with open(("model\saves\{}\config.json".format(savepath)), "wt") as f:
+    f.write(modJson)
+    model.save_weights("model\saves\{}\weights.hd5".format(savepath))
+f.close()
+'''

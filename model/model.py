@@ -36,7 +36,7 @@ classes = ['EOSINOPHIL', 'LYMPHOCYTE', 'MONOCYTE', 'NEUTROPHIL']
 #this is reversed order for the heatmap
 rclasses = ['NEUTROPHIL', 'MONOCYTE', 'LYMPHOCYTE', 'EOSINOPHIL']
 
-def loadImages(trainDir, testDir):
+def loadImages(trainDir, maxsize, testDir):
     #first step for preprocessing - this uses the preprocessing input imported from the ResNet library.
     trainDGen = ImageDataGenerator(
                 preprocessing_function = preprocess_input,
@@ -105,6 +105,8 @@ def saveModel(model):
 
     #splitting the file so that it can be pushed
     reSplit(savepath)
+
+    return savepath
 
 def loadModel(savepath):
     #trying if model is in parts
