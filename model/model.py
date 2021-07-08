@@ -46,7 +46,7 @@ def loadImages(trainDir, maxsize, testDir):
     trainGen = trainDGen.flow_from_directory(
                 trainDir,
                 target_size = maxsize,
-                batch_size = 32,
+                batch_size = 48, #used to be 32, but since accuracy began to plateau a higher batch would be beneficial.
                 class_mode = 'sparse',
                 )
 
@@ -68,6 +68,27 @@ def firstModelSetup():
                     weights = None,
                     classes = 4,
                     )
+
+    #compiling the model together. In future there is the possibility of removing the top layer and adding our own dense layers.
+    model.compile(
+                optimizer = AdaBound(lr=1e-3, final_lr=0.1),
+                loss = ['sparse_categorical_crossentropy'],
+                metrics = ['accuracy']
+                )
+    #returns the freshly baked model
+    return model
+
+def firstDropOutModelSetup():
+    #model - including the top dense layers for classification, as we are not using ImageNet weights.
+    rmodel = ResNet50(
+                    include_top = False,
+                    weights = None,
+                    classes = 4,
+                    input_shape = (224, 224, 3)
+                    )
+
+    model = Sequential()
+    model.add(rmodel)
 
     #compiling the model together. In future there is the possibility of removing the top layer and adding our own dense layers.
     model.compile(
@@ -155,8 +176,9 @@ def reSplit(savepath):
     #removing the big file
     os.remove(("model\saves\{}\model".format(savepath)))
 
+#function for creating a confusion matrix and heatmap to easily understand the data and pinpoint the training sections.
 def confMatrix(model, testGen, classes):
-    #reversing the classes
+    #reversing the classes if function used for another dataset
     rclasses = classes[::-1]
     #predicting the test set
     predicts = model.predict(testGen)
@@ -174,7 +196,7 @@ def confMatrix(model, testGen, classes):
 
     #plotting the heatmap using seaborn
     #red colour, annotating the cells with their values and annotating the x and y classes with their variables.
-    sn.heatmap(matrix, cmap='Reds', annot=True, fmt='d', xticklabels = classes, yticklabels = rclasses)
+    sn.heatmap(matrix, cmap='Reds', annot=True, fmt='d', xticklabels = classes, yticklabels = classes)
 
 '''
 =======

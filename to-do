@@ -4,6 +4,8 @@ Modulate each function within the model. tick
 
 Create micro analysis on specific classes (macro was confusion matrix).
 
-Train.
+Train. tick
 
-Create the validation set.
+Create the validation set. tick
+
+Comment everything.
