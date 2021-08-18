@@ -176,6 +176,16 @@ def reSplit(savepath):
     #removing the big file
     os.remove(("model\saves\{}\model".format(savepath)))
 
+def reMerge(savepath):
+    #merging a file when unable to load
+    fs = Filesplit()
+    fs.merge(
+            ("model\saves\{}".format(savepath)),
+            ("model\saves\{}\model".format(savepath)),
+            cleanup = True
+            )
+
+
 #function for creating a confusion matrix and heatmap to easily understand the data and pinpoint the training sections.
 def confMatrix(model, testGen, classes):
     #reversing the classes if function used for another dataset
