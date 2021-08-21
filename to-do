@@ -8,4 +8,6 @@ Train. tick
 
 Create the validation set. tick
 
-Comment everything.
+Create a model utilising dropout to increase accuracy. tick
+
+Comment everything. tick
