@@ -11,4 +11,52 @@ with open(("model\saves\{}\config.json".format(savepath)), "wt") as f:
     f.write(modJson)
     model.save_weights("model\saves\{}\weights.hd5".format(savepath))
 f.close()
+
+#making trainGen and testGen global
+  global trainGen, testGen
+
+  #loading non dropout models
+model1 = firstModelSetup()
+model2 = loadModel("model_05072021-2348")
+model3 = loadModel("model_06072021-1645")
+model4 = loadModel("model_06072021-2209")
+model5 = loadModel("model_06072021-2225")
+model6 = loadModel("model_06072021-2231")
+model7 = loadModel("model_06072021-2257")
+
+#loading dropuout models
+dmodel1 = loadModel("model_19082021-0014")
+dmodel2 = loadModel("model_19082021-0056")
+dmodel3 = loadModel("model_19082021-0207")
+dmodel4 = loadModel("model_19082021-0220")
+dmodel5 = loadModel("model_19082021-1926")
+dmodel6 = loadModel("model_19082021-2023")
+dmodel7 = loadModel("model_19082021-2056")
+
+  #fitting model 1 (due to it being a first creation)
+  model1 = trainModel(model1, trainGen, 1)
+
 '''
+    #gathering accuracies for the models
+    for i in range(2, 8):
+        modelAcc.append(evalModel(globals()['model%s' % i], testGen))
+    for j in range(1, 8):
+        dmodelAcc.append(evalModel(globals()['dmodel%s' % i], testGen))
+'''
+
+
+  modelAcc.append(evalModel(model1, testGen))
+  modelAcc.append(evalModel(model2, testGen))
+  modelAcc.append(evalModel(model3, testGen))
+  modelAcc.append(evalModel(model4, testGen))
+  modelAcc.append(evalModel(model5, testGen))
+  modelAcc.append(evalModel(model6, testGen))
+  modelAcc.append(evalModel(model7, testGen))
+
+  dmodelAcc.append(evalModel(dmodel1, testGen))
+  dmodelAcc.append(evalModel(dmodel2, testGen))
+  dmodelAcc.append(evalModel(dmodel3, testGen))
+  dmodelAcc.append(evalModel(dmodel4, testGen))
+  dmodelAcc.append(evalModel(dmodel5, testGen))
+  dmodelAcc.append(evalModel(dmodel6, testGen))
+  dmodelAcc.append(evalModel(dmodel7, testGen))
