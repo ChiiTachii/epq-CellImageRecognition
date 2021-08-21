@@ -1,15 +1,18 @@
 '''
 <<<<<<< HEAD
 '''
+
 #imports for tf and resnet
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
 from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img
+from tensorflow.keras.layers import AveragePooling2D, BatchNormalization, Dense, Dropout, Flatten, Layer, MaxPooling2D
 from keras_adabound import AdaBound
 
 #basic imports
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import glob, os
 import re
@@ -23,12 +26,20 @@ from mlxtend.evaluate import confusion_matrix as cm
 import PIL
 from PIL import Image
 
+#tensorboard functionality
+global graph
+graph = tf.compat.v1.get_default_graph()
+
+#setting up log directory and tensorboard callbacks
+log_dir = Path('./model/logs/')
+tbcb = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
 #this is the maximum width and height that ResNet handles.
 maxsize = (224, 224)
 
 #specifies the directories for the training and testing.
 trainDir = Path('./images/TRAIN')
-testDir = Path('./images/TEST_SIMPLE')
+testDir = Path('./images/TEST')
 
 #this is a list of the 4 classes that will be used. they will be formatted into the directory.
 classes = ['EOSINOPHIL', 'LYMPHOCYTE', 'MONOCYTE', 'NEUTROPHIL']
@@ -79,16 +90,31 @@ def firstModelSetup():
     return model
 
 def firstDropOutModelSetup():
-    #model - including the top dense layers for classification, as we are not using ImageNet weights.
-    rmodel = ResNet50(
+    #base model. we are working with resnet as a base, but fine-tuning it with dropout layers.
+    bmodel = ResNet50(
                     include_top = False,
                     weights = None,
                     classes = 4,
                     input_shape = (224, 224, 3)
                     )
+    #adding our own layers including large amounts of dropout
+    hmodel = bmodel.output
+    hmodel = AveragePooling2D(pool_size=(7, 7))(hmodel)
+    hmodel = Flatten()(hmodel)
+    hmodel = BatchNormalization()(hmodel)
+    hmodel = Dense(256, activation="relu")(hmodel)
+    hmodel = Dropout(0.5)(hmodel)
+    hmodel = BatchNormalization()(hmodel)
+    hmodel = Dense(128, activation="relu")(hmodel)
+    hmodel = Dropout(0.5)(hmodel)
+    hmodel = BatchNormalization()(hmodel)
+    hmodel = Dense(64, activation="relu")(hmodel)
+    hmodel = Dropout(0.5)(hmodel)
+    hmodel = BatchNormalization()(hmodel)
+    hmodel = Dense(4, activation="softmax")(hmodel)
 
-    model = Sequential()
-    model.add(rmodel)
+    #creating the fully fledged model
+    model = keras.Model(inputs=bmodel.input, outputs=hmodel)
 
     #compiling the model together. In future there is the possibility of removing the top layer and adding our own dense layers.
     model.compile(
@@ -96,13 +122,18 @@ def firstDropOutModelSetup():
                 loss = ['sparse_categorical_crossentropy'],
                 metrics = ['accuracy']
                 )
+
     #returns the freshly baked model
     return model
 
 def trainModel(model, trainGen, epochs):
+    global tbcb
+
+    #fitting the model over specified epochs
     model.fit(
             trainGen,
-            epochs = epochs
+            epochs = epochs,
+            callbacks = [tbcb]
             )
 
     #returns the trained model
@@ -157,7 +188,10 @@ def loadModel(savepath):
 
 def evalModel(model, testGen):
     #evaluating accuracy. verbose set to 2 for silence and information.
-    test_loss, test_acc = model.evaluate(testGen, verbose=2)
+    test_loss, test_acc = model.evaluate(
+    testGen,
+    verbose=2
+    )
     print('\nTest accuracy:', test_acc)
 
     #returns the accuracy value to be compared
@@ -167,23 +201,34 @@ def evalModel(model, testGen):
 def reSplit(savepath):
     #splitting the file so that it can be pushed
     fs = Filesplit()
-    fs.split(
+    #if errors occur, then it will be caught in the statement
+    try:
+        fs.split(
             ("model\saves\{}\model".format(savepath)),
             10000000,
             ("model\saves\{}".format(savepath))
             )
 
-    #removing the big file
-    os.remove(("model\saves\{}\model".format(savepath)))
+        #removing the big file
+        os.remove(("model\saves\{}\model".format(savepath)))
+
+        #helpful message showing success
+        print("\nModel file split asunder.")
+    except:
+        print("\nCleaning unsuccessful, try again.")
 
 def reMerge(savepath):
     #merging a file when unable to load
     fs = Filesplit()
-    fs.merge(
+    try:
+        fs.merge(
             ("model\saves\{}".format(savepath)),
             ("model\saves\{}\model".format(savepath)),
             cleanup = True
             )
+    except:
+        #if error raised from an improperly saved model
+        print("Manifest not found during sweeping.")
 
 
 #function for creating a confusion matrix and heatmap to easily understand the data and pinpoint the training sections.
@@ -207,6 +252,21 @@ def confMatrix(model, testGen, classes):
     #plotting the heatmap using seaborn
     #red colour, annotating the cells with their values and annotating the x and y classes with their variables.
     sn.heatmap(matrix, cmap='Reds', annot=True, fmt='d', xticklabels = classes, yticklabels = classes)
+
+#function for plotting an accuracy graph based upon the previous models' results (completed after all training has occurred)
+def plotAccuracy():
+
+    #creating a list to store the accuracies
+    modelAcc = [0.62002414, 0.71250504, 0.80458385, 0.86087656, 0.8954564, 0.87856853, 0.8713309]
+    dmodelAcc = [0.46441495, 0.8065943, 0.7599518, 0.8194612, 0.8725372, 0.89103335, 0.9010334]
+
+    modelAccs = [[0.62002414, 0.46441495], [0.71250504, 0.8065943], [0.80458385, 0.7599518], [0.86087656, 0.8194612], [0.8954564, 0.8725372], [0.87856853, 0.89103335], [0.8713309,  0.9010334]]
+
+    #creating the dataframe
+    df = pd.DataFrame(columns=['modelAcc', 'dmodelAcc'], data=modelAccs)
+
+    #plotting
+    sn.relplot(kind="line", data=df, palette = "BuGn")
 
 '''
 =======
